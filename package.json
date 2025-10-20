@@ -1,0 +1,11 @@
+{
+  "name": "challenge100",
+  "version": "1.0.0",
+  "description": "코딩테스트 대비를 위한 Javascript 기반 100문제 챌린지입니다. 매일 두시간씩 꾸준히 풀어나가는 것이 목표입니다.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
