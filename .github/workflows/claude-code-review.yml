@@ -117,13 +117,23 @@ jobs:
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DB_ID }}
-          CLAUDE_OUTPUT: ${{ steps.algo-review.outputs.reply }}
+          EXECUTION_FILE: ${{ steps.algo-review.outputs.execution_file }}
         run: |
           node -e "
+          const fs = require('fs');
+
           async function main() {
             const token = process.env.NOTION_TOKEN;
             const dbId = process.env.NOTION_DATABASE_ID;
-            const rawOutput = process.env.CLAUDE_OUTPUT || '';
+            const execFile = process.env.EXECUTION_FILE;
+            console.log("execFile >>>" , execFile)
+            // execution_file에서 데이터 읽기
+            let rawOutput = '';
+            if (execFile && fs.existsSync(execFile)) {
+              const fileContent = fs.readFileSync(execFile, 'utf8');
+              const jsonData = JSON.parse(fileContent);
+              rawOutput = jsonData.reply || '';
+            }
 
             // 1. 데이터가 아예 비어있는지, 태그가 없는지 확인하기 위해 출력
                 console.log('--- Received Raw Output ---');
