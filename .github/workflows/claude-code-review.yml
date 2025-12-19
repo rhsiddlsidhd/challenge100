@@ -108,18 +108,28 @@ jobs:
           # or https://code.claude.com/docs/en/cli-reference for available options
           claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
 
+      - name: Check Claude Outputs
+        run: |
+          echo "Full outputs object: ${{ toJson(steps.algo-review.outputs) }}"
+
       - name: Send to Notion
         if: contains(github.event.pull_request.labels.*.name, 'algorithm')
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DB_ID }}
-          CLAUDE_OUTPUT: ${{ steps.algo-review.outputs.content }}
+          CLAUDE_OUTPUT: ${{ steps.algo-review.outputs.reply }}
         run: |
           node -e "
           async function main() {
             const token = process.env.NOTION_TOKEN;
             const dbId = process.env.NOTION_DATABASE_ID;
             const rawOutput = process.env.CLAUDE_OUTPUT || '';
+
+            // 1. 데이터가 아예 비어있는지, 태그가 없는지 확인하기 위해 출력
+                console.log('--- Received Raw Output ---');
+                console.log(rawOutput);
+                console.log('---------------------------');
+            
 
             const match = rawOutput.match(/<data>([\s\S]*?)<\/data>/);
             if (!match) {
