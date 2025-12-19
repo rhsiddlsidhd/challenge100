@@ -88,6 +88,12 @@ jobs:
               "created_at": ""
             }
 
+      - name: Debug JSON Output
+        if: contains(github.event.pull_request.labels.*.name, 'algorithm')
+        run: |
+          echo "Generated JSON:"
+          echo '${{ steps.algo-review.outputs.structured_output }}'
+
       - name: Run Claude Code Review
         if: "!contains(github.event.pull_request.labels.*.name, 'algorithm')"
         id: claude-review
@@ -115,59 +121,74 @@ jobs:
 
       - name: Send to Notion
         if: contains(github.event.pull_request.labels.*.name, 'algorithm')
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            [Task]
-            이전 Algorithm Analysis 단계에서 생성된 JSON 데이터를 Notion API를 사용하여 데이터베이스에 저장하세요.
+        run: |
+          node << 'EOF'
+          const https = require('https');
 
-            [Environment Variables]
-            - NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-            - NOTION_DATABASE_ID: ${{ secrets.NOTION_DB_ID }}
-            - EXECUTION_FILE: ${{ steps.algo-review.outputs.execution_file }}
+          const jsonData = JSON.parse(process.env.JSON_DATA);
 
-            [Instructions]
-            1. 먼저 CLAUDE_OUTPUT 또는 EXECUTION_FILE에서 JSON 데이터를 읽어오세요.
-               - EXECUTION_FILE을 읽어서 사용
+          const notionData = {
+            parent: { database_id: process.env.NOTION_DB_ID },
+            properties: {
+              "문제명": {
+                title: [{ text: { content: jsonData.problem_name } }]
+              },
+              "카테고리": {
+                select: { name: jsonData.category }
+              },
+              "알고리즘": {
+                multi_select: jsonData.used_algorithm.map(algo => ({ name: algo }))
+              },
+              "시간복잡도": {
+                rich_text: [{ text: { content: jsonData.time_complexity } }]
+              },
+              "점수": {
+                number: jsonData.score
+              },
+              "날짜": {
+                date: { start: jsonData.created_at }
+              },
+              "피드백": {
+                rich_text: [{ text: { content: jsonData.feedback_summary.join('\n') } }]
+              },
+              "개선힌트": {
+                rich_text: [{ text: { content: jsonData.next_solution_hint } }]
+              }
+            }
+          };
 
-            2. JSON 데이터는 다음 형식입니다:
-               {
-                 "category": "자료구조 카테고리",
-                 "problem_name": "문제명",
-                 "used_algorithm": ["알고리즘1", "알고리즘2"],
-                 "time_complexity": "시간 복잡도",
-                 "feedback_summary": ["피드백1", "피드백2", "피드백3"],
-                 "next_solution_hint": "개선 힌트",
-                 "score": 점수,
-                 "created_at": "YYYY-MM-DD"
-               }
+          const data = JSON.stringify(notionData);
 
-            3. 이 JSON 데이터를 아래 Notion API 형식으로 변환하여 전송하세요:
-               POST https://api.notion.com/v1/pages
-               Headers:
-                 - Authorization: `Bearer ${NOTION_TOKEN}`
-                 - Content-Type: `application/json`
-                 - Notion-Version: `2022-06-28`
+          const options = {
+            hostname: 'api.notion.com',
+            path: '/v1/pages',
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.NOTION_TOKEN}`,
+              'Content-Type': 'application/json',
+              'Notion-Version': '2022-06-28',
+              'Content-Length': data.length
+            }
+          };
 
-               Body:
-               {
-                 "parent": { "database_id": "${NOTION_DATABASE_ID}" },
-                 "properties": {
-                   "문제명": { "title": [{ "text": { "content": "problem_name 값" } }] },
-                   "자료구조": { "select": { "name": "category 값" } },
-                   "알고리즘": { "multi_select": [{ "name": "알고리즘1" }, { "name": "알고리즘2" }] },
-                   "시간복잡도": { "rich_text": [{ "text": { "content": "time_complexity 값" } }] },
-                   "점수": { "number": score 값 },
-                   "현재 코드 피드백": { "rich_text": [{ "text": { "content": "feedback_summary를 줄바꿈으로 연결한 값" } }] },
-                   "향후 개선 사항": { "rich_text": [{ "text": { "content": "next_solution_hint 값" } }] },
-                   "분석 날짜": { "date": { "start": "created_at 값" } }
-                 }
-               }
+          const req = https.request(options, (res) => {
+            let responseData = '';
+            res.on('data', (chunk) => { responseData += chunk; });
+            res.on('end', () => {
+              console.log('Status:', res.statusCode);
+              console.log('Response:', responseData);
+            });
+          });
 
-            4. API 호출이 성공하면 "✅ Notion page created successfully!" 메시지를 출력하세요.
-            5. 실패하면 에러 메시지와 함께 실패 사유를 출력하세요.
+          req.on('error', (error) => {
+            console.error('Error:', error);
+            process.exit(1);
+          });
 
-            [Important]
-            - Node.js의 fetch API 또는 Bash의 curl을 사용하여 Notion API를 호출하세요.
-            - JSON 파싱 시 다양한 형식(코드블록, wrapper 객체 등)을 처리할 수 있도록 하세요.
+          req.write(data);
+          req.end();
+          EOF
+        env:
+          JSON_DATA: ${{ steps.algo-review.outputs.structured_output }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID: ${{ secrets.NOTION_DB_ID }}
