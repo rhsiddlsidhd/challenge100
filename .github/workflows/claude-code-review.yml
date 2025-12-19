@@ -140,13 +140,11 @@ jobs:
             [Environment Variables]
             - NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
             - NOTION_DATABASE_ID: ${{ secrets.NOTION_DB_ID }}
-            - CLAUDE_OUTPUT: ${{ steps.algo-review.outputs.result }}
             - EXECUTION_FILE: ${{ steps.algo-review.outputs.execution_file }}
 
             [Instructions]
             1. 먼저 CLAUDE_OUTPUT 또는 EXECUTION_FILE에서 JSON 데이터를 읽어오세요.
-               - CLAUDE_OUTPUT이 있으면 직접 사용
-               - 없으면 EXECUTION_FILE을 읽어서 사용
+               - EXECUTION_FILE을 읽어서 사용
 
             2. JSON 데이터는 다음 형식입니다:
                {
