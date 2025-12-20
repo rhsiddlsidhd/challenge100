@@ -32,7 +32,7 @@ jobs:
       - name: Check required files
         id: check_files
         run: |
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }})
+          CHANGED_FILES=$(git diff --name-only origin/master HEAD)
 
           HAS_JS=false
           HAS_MD=false
