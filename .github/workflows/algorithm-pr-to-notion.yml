@@ -29,8 +29,32 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Check required files
+        id: check_files
+        run: |
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }})
+
+          HAS_JS=false
+          HAS_MD=false
+
+          for file in $CHANGED_FILES; do
+            if [[ "$file" == *"/index.js" ]]; then
+              HAS_JS=true
+            fi
+            if [[ "$file" == *"/solution.md" ]]; then
+              HAS_MD=true
+            fi
+          done
+
+          if [[ "$HAS_JS" == "true" && "$HAS_MD" == "true" ]]; then
+            echo "run_claude=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_claude=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Claude 사고 분석
         id: claude
+        if: steps.check_files.outputs.run_claude == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
