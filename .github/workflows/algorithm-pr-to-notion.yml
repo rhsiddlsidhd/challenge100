@@ -1,0 +1,132 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    # Optional: Only run on specific file changes
+    paths:
+      - "src/**/*.js"
+      - "src/**/*.md"
+
+jobs:
+  claude-review:
+    # Optional: Filter by PR author
+    # if: |
+    #   github.event.pull_request.user.login == 'external-contributor' ||
+    #   github.event.pull_request.user.login == 'new-developer' ||
+    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Claude 사고 분석
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR_TITLE: ${{ github.event.pull_request.title }}
+            PR_NUMBER: ${{ github.event.pull_request.number }}
+
+            You are an Algorithm Learning Log Generator.
+
+            Context:
+            - Each problem has a solution file (index.js) and a solution.md.
+            - solution.md ALWAYS exists and contains:
+                - problem_name
+                - platform
+                - data_structure
+                - used_algorithm
+                - idea_summary
+                - next_hint
+            - Treat solution.md as the author's original thinking.
+
+            Your Task:
+            1. Read the PR diff and fully understand the algorithm solution.
+            2. Use solution.md as the primary source of intent.
+            3. Supplement and refine the content using the actual code logic.
+            4. Do NOT overwrite the author's intent unless it is clearly incorrect.
+
+            Field Rules:
+            - problem_name: Prefer solution.md, fallback to PR_TITLE if missing.
+            - platform: Extract from solution.md.
+            - difficulty: Infer from problem context (e.g., BOJ Gold 5, Programmers Lv2).
+            - data_structure: Use solution.md wording.
+            - used_algorithm: Use solution.md list, normalize names if needed.
+            - idea_summary: Refine the author's summary into 1–2 concise Korean sentences.
+            - time_complexity: Infer Big-O from code.
+            - space_complexity: Infer Big-O from code.
+            - feedback:
+                - Write in Korean.
+                - MINIMUM 3 sentences, MAXIMUM 5 sentences.
+                - Each sentence must be concise.
+                - Focus on algorithmic thinking, trade-offs, and improvement points.
+                - Do NOT repeat idea_summary or next_hint.
+            - next_hint: Improve or slightly expand the author's hint if possible.
+            - score: Integer 1–10 based on clarity, correctness, and efficiency.
+            - created_at: Use today's date (YYYY-MM-DD).
+
+            Output Rules:
+            - Output ONLY valid JSON.
+            - No markdown.
+            - No explanations outside JSON.
+            - No trailing commas.
+            - All text fields must be strings.
+
+          claude_args: |
+            --json-schema '{
+              "type": "object",
+              "properties": {
+                "problem_name": {"type": "string"},
+                "platform": {"type": "string"},
+                "difficulty": {"type": "string"},
+                "data_structure": {"type": "string"},
+                "used_algorithm": {"type": "array", "items": {"type": "string"}},
+                "idea_summary": {"type": "string"},
+                "time_complexity": {"type": "string"},
+                "space_complexity": {"type": "string"},
+                "feedback": {"type": "array", "items": {"type": "string"}},
+                "next_hint": {"type": "string"},
+                "score": {"type": "integer", "minimum": 1, "maximum": 10},
+                "created_at": {"type": "string", "format": "date"}
+              },
+              "required": [
+                "problem_name",
+                "platform",
+                "difficulty",
+                "data_structure",
+                "used_algorithm",
+                "idea_summary",
+                "time_complexity",
+                "space_complexity",
+                "feedback",
+                "next_hint",
+                "score",
+                "created_at"
+              ]
+            }'
+
+      - name: Save JSON
+        run: |
+          echo '${{ steps.claude.outputs.structured_output }}' > output.json
+
+      - name: Send to Notion
+        run: node notion.js
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_ID: ${{ secrets.NOTION_DB_ID }}
+
+      - name: Debug (optional)
+        if: failure()
+        run: cat output.json
