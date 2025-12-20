@@ -27,12 +27,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Check required files
         id: check_files
         run: |
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }})
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }})
 
           HAS_JS=false
           HAS_MD=false
