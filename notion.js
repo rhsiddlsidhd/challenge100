@@ -17,7 +17,7 @@ const body = {
       select: { name: data.difficulty },
     },
     자료구조: {
-      multi_select: { name: data.data_structure },
+      multi_select: [{ name: data.data_structure }],
     },
     알고리즘: {
       multi_select: data.used_algorithm.map((a) => ({ name: a })),
@@ -26,10 +26,10 @@ const body = {
       rich_text: [{ text: { content: data.idea_summary } }],
     },
     시간복잡도: {
-      select: [{ text: { content: data.time_complexity } }],
+      select: { name: data.time_complexity },
     },
     공간복잡도: {
-      select: [{ text: { content: data.space_complexity } }],
+      select: { name: data.space_complexity },
     },
     피드백: {
       rich_text: [{ text: { content: data.feedback.join("\n") } }],
