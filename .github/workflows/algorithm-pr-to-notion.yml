@@ -137,7 +137,7 @@ jobs:
             | **공간 복잡도** | \`${output.space_complexity}\` |
             ---
             ### 💡 아이디어 요약
-             ${output.idea_summary}
+            ${output.idea_summary}
             ---
             ### ✍️ 피드백
             ${output.feedback.map(f => `- ${f}`).join('\n')}
