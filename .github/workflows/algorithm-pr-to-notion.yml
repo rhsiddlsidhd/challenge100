@@ -32,24 +32,34 @@ jobs:
       - name: Check required files
         id: check_files
         run: |
-          CHANGED_FILES=$(git diff --name-only origin/master HEAD)
+          # Fetch base branch for comparison
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD)
 
           HAS_JS=false
           HAS_MD=false
 
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
           for file in $CHANGED_FILES; do
             if [[ "$file" == *"/index.js" ]]; then
               HAS_JS=true
+              echo "Found index.js: $file"
             fi
             if [[ "$file" == *"/solution.md" ]]; then
               HAS_MD=true
+              echo "Found solution.md: $file"
             fi
           done
 
           if [[ "$HAS_JS" == "true" && "$HAS_MD" == "true" ]]; then
             echo "run_claude=true" >> $GITHUB_OUTPUT
+            echo "✅ Both required files found - will run Claude analysis"
           else
             echo "run_claude=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Missing required files (index.js: $HAS_JS, solution.md: $HAS_MD) - skipping Claude analysis"
           fi
 
       - name: Claude 사고 분석
@@ -142,10 +152,12 @@ jobs:
             }'
 
       - name: Save JSON
+        if: steps.check_files.outputs.run_claude == 'true'
         run: |
           echo '${{ steps.claude.outputs.structured_output }}' > output.json
 
       - name: Send to Notion
+        if: steps.check_files.outputs.run_claude == 'true'
         run: node notion.js
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
