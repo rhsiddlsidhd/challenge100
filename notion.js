@@ -2,7 +2,8 @@ const fs = require("fs");
 const https = require("https");
 console.log("hi");
 const data = JSON.parse(fs.readFileSync("output.json", "utf8"));
-
+console.log("data", data);
+// {"object":"error","status":400,"code":"validation_error","message":"자료구조 is expected to be multi_select. 시간복잡도 is expected to be select. 공간복잡도 is expected to be select.","request_id":"d1e50e45-7485-48b1-a2d3-3e4e5d6f9a49"}
 const body = {
   parent: { database_id: process.env.NOTION_DB_ID },
   properties: {
@@ -16,7 +17,7 @@ const body = {
       select: { name: data.difficulty },
     },
     자료구조: {
-      select: { name: data.data_structure },
+      multi_select: { name: data.data_structure },
     },
     알고리즘: {
       multi_select: data.used_algorithm.map((a) => ({ name: a })),
@@ -25,10 +26,10 @@ const body = {
       rich_text: [{ text: { content: data.idea_summary } }],
     },
     시간복잡도: {
-      rich_text: [{ text: { content: data.time_complexity } }],
+      select: [{ text: { content: data.time_complexity } }],
     },
     공간복잡도: {
-      rich_text: [{ text: { content: data.space_complexity } }],
+      select: [{ text: { content: data.space_complexity } }],
     },
     피드백: {
       rich_text: [{ text: { content: data.feedback.join("\n") } }],
