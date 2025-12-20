@@ -1,9 +1,8 @@
 const fs = require("fs");
 const https = require("https");
-console.log("hi");
+
 const data = JSON.parse(fs.readFileSync("output.json", "utf8"));
-console.log("data", data);
-// {"object":"error","status":400,"code":"validation_error","message":"자료구조 is expected to be multi_select. 시간복잡도 is expected to be select. 공간복잡도 is expected to be select.","request_id":"d1e50e45-7485-48b1-a2d3-3e4e5d6f9a49"}
+
 const body = {
   parent: { database_id: process.env.NOTION_DB_ID },
   properties: {
