@@ -35,6 +35,9 @@ jobs:
           # Fetch base branch for comparison
           git fetch origin ${{ github.event.pull_request.base.ref }}
 
+          # Disable path quoting for non-ASCII characters
+          git config core.quotePath false
+
           CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD)
 
           HAS_JS=false
