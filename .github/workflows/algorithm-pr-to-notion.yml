@@ -121,39 +121,6 @@ jobs:
         run: |
           echo '${{ steps.claude.outputs.structured_output }}' > output.json
 
-      - name: PR 본문 업데이트
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const output = JSON.parse(fs.readFileSync('output.json', 'utf8'));
-            const body = `# Algorithm Review: ${output.problem_name}
-            | Category | Details |
-            | --- | --- |
-            | **플랫폼** | ${output.platform} |
-            | **자료구조** | ${output.data_structure} |
-            | **사용한 알고리즘** | ${output.used_algorithm.join(', ')} |
-            | **시간 복잡도** | \`${output.time_complexity}\` |
-            | **공간 복잡도** | \`${output.space_complexity}\` |
-            ---
-            ### 💡 아이디어 요약
-            ${output.idea_summary}
-            ---
-            ### ✍️ 피드백
-            ${output.feedback.map(f => `- ${f}`).join('\n')}
-            ---
-            ### 🚀 다음 힌트
-            ${output.next_hint}
-            ---
-            **SCORE: ${output.score}/10**
-            `;
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              body: body
-            });
-
       - name: Send to Notion
         run: node notion.js
         env:
