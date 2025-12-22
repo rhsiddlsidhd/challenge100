@@ -5,7 +5,7 @@ function solution(arr) {
   const sorted = arr.slice().sort((a, b) => b - a);
 
   for (let i = 0; i < n; i++) {
-    answer += arr.indexOf(sorted[[i]]) + 1;
+    answer += arr.indexOf(sorted[i]) + 1;
   }
 
   return answer;
