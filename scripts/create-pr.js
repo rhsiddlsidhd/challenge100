@@ -33,16 +33,32 @@ async function main() {
     const body = createPrBody(jsFile, mdFile, prInfo);
     console.log("  - PR 본문이 성공적으로 생성되었습니다.");
 
-    // 4. PR 생성 실행
-    console.log("4. GitHub PR 생성을 시도합니다...");
-    // 제목에 포함될 수 있는 큰따옴표를 이스케이프 처리합니다.
+    // 4. 커밋 생성
+    console.log("4. 변경 사항을 커밋합니다...");
     const escapedTitle = prInfo.fullTitle.replace(/"/g, '\\"');
+    execSync(`git commit -m "${escapedTitle}"`, {
+      stdio: "inherit",
+    });
+    console.log(`  - 커밋 완료: ${prInfo.fullTitle}`);
+
+    // 5. 현재 브랜치를 push
+    console.log("5. 변경 사항을 원격 저장소에 push합니다...");
+    const currentBranch = execSync("git branch --show-current")
+      .toString()
+      .trim();
+    execSync(`git push -u origin ${currentBranch}`, {
+      stdio: "inherit",
+    });
+    console.log(`  - Push 완료: ${currentBranch}`);
+
+    // 6. PR 생성 실행
+    console.log("6. GitHub PR 생성을 시도합니다...");
     const command = `gh pr create --base master --title "${escapedTitle}" --body-file - --web`;
 
     console.log("  - PR 생성 명령어를 실행합니다.");
     execSync(command, {
       input: body, // PR 본문을 stdin으로 전달
-      stdio: "inherit", // gh 명령어의 출력을 실시간으로 보여주기 위함
+      stdio: ["pipe", "inherit", "inherit"], // stdin은 pipe, stdout/stderr는 inherit
     });
 
     console.log("✅ PR 생성 스크립트 실행이 완료되었습니다.");
@@ -155,6 +171,37 @@ function fillPrBodySection(
   }
 }
 
+function fillPrBodySectionFromField(
+  templateContent,
+  mdContent,
+  mdKey,
+  templateHeading
+) {
+  const regex = new RegExp(`- \\*\\*${mdKey}\\*\\*:\\s*(.*)`, "i");
+  const match = mdContent.match(regex);
+
+  if (match && match[1] && match[1].trim() !== "") {
+    const value = match[1].trim();
+    // 마침표를 기준으로 문장을 나누고, 각 문장을 새 줄로 표시
+    const formattedValue = value
+      .split(". ")
+      .map((sentence) => sentence.trim())
+      .filter((sentence) => sentence.length > 0)
+      .map((sentence) => (sentence.endsWith(".") ? sentence : sentence + "."))
+      .join("\n");
+
+    return templateContent.replace(
+      templateHeading,
+      `${templateHeading}\n\n${formattedValue}`
+    );
+  } else {
+    console.warn(
+      `⚠️ 'solution.md'에서 '${mdKey}' 필드를 찾지 못해 PR 템플릿의 '${templateHeading}' 항목이 비어있습니다.`
+    );
+    return templateContent;
+  }
+}
+
 function createPrBody(jsFilePath, mdFilePath, prInfo) {
   const templatePath = ".github/PULL_REQUEST_TEMPLATE.md";
   let templateContent = fs.readFileSync(templatePath, "utf8");
@@ -190,13 +237,13 @@ function createPrBody(jsFilePath, mdFilePath, prInfo) {
     "자료구조"
   );
 
-  templateContent = fillPrBodySection(
+  templateContent = fillPrBodySectionFromField(
     templateContent,
     mdContent,
     "idea_summary",
     "## 💡 풀이 요약"
   );
-  templateContent = fillPrBodySection(
+  templateContent = fillPrBodySectionFromField(
     templateContent,
     mdContent,
     "next_hint",
