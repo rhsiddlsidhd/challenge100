@@ -37,7 +37,7 @@ async function main() {
     console.log("4. GitHub PR 생성을 시도합니다...");
     // 제목에 포함될 수 있는 큰따옴표를 이스케이프 처리합니다.
     const escapedTitle = prInfo.fullTitle.replace(/"/g, '\\"');
-    const command = `gh pr create --title "${escapedTitle}" --body-file -`;
+    const command = `gh pr create --base master --title "${escapedTitle}" --body-file - --web`;
 
     console.log("  - PR 생성 명령어를 실행합니다.");
     execSync(command, {
@@ -53,7 +53,11 @@ async function main() {
 }
 
 function getStagedFiles() {
-  const output = execSync("git diff --staged --name-only").toString().trim();
+  const output = execSync(
+    "git -c core.quotepath=false diff --staged --name-only"
+  )
+    .toString()
+    .trim();
   if (!output) {
     throw new Error(
       "스테이징된 파일이 없습니다. `git add`로 파일을 추가해주세요."
@@ -132,7 +136,9 @@ function fillPrBodySection(
   mdHeading,
   templateHeading
 ) {
-  const regex = new RegExp(`### ${mdHeading}\\s*([\\s\\S]*?)(?=\\n###|\\Z)`);
+  const regex = new RegExp(
+    `### ${mdHeading}\\s*:?\\s*([\\s\\S]*?)(?=\\r?\\n###|\\Z)`
+  );
   const match = mdContent.match(regex);
 
   if (match && match[1] && match[1].trim() !== "") {
