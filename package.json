@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "pr": "node scripts/create-pr.js"
+    "pr": "node scripts/create-pr.js",
+    "new-problem": "node scripts/new-problem.js"
   },
   "author": "",
   "license": "ISC"
