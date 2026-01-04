@@ -104,10 +104,8 @@ function createPrTitle(mdFilePath) {
     );
   }
 
-  // 1. '- **used_algorithm**' 뒤의 내용을 찾거나, 아랫줄의 인용구(>) 내용을 찾음
-  const algorithmMatch = mdContent.match(
-    /-\s*\*\*used_algorithm\*\*\s*(?:\n>\s*)?(.*)/i
-  );
+  // 1. '- **used_algorithm**:' 뒤의 내용을 찾음
+  const algorithmMatch = mdContent.match(/-\s*\*\*used_algorithm\*\*:\s*(.*)/i);
 
   if (
     !algorithmMatch ||
@@ -115,7 +113,7 @@ function createPrTitle(mdFilePath) {
     algorithmMatch[1].trim() === ""
   ) {
     throw new Error(
-      `'${mdFilePath}'에서 'used_algorithm' 항목의 내용을 찾을 수 없습니다. (예: - **used_algorithm** > 이중 for문)`
+      `'${mdFilePath}'에서 'used_algorithm' 항목의 내용을 찾을 수 없습니다. (예: - **used_algorithm**: 이중 for문)`
     );
   }
 
@@ -134,38 +132,21 @@ function fillPrBodyField(templateContent, mdContent, mdKey, templateKey) {
 
   if (match && match[1] && match[1].trim() !== "") {
     const value = match[1].trim();
+    // 마침표를 기준으로 문장을 나누고, 각 문장을 새 줄로 표시
+    const formattedValue = value
+      .split(". ")
+      .map((sentence) => sentence.trim())
+      .filter((sentence) => sentence.length > 0)
+      .map((sentence) => (sentence.endsWith(".") ? sentence : sentence + "."))
+      .join("\n");
+
     return templateContent.replace(
       new RegExp(`- \\*\\*${templateKey}\\*\\*:\\s*`),
-      `- **${templateKey}**: ${value}`
+      `- **${templateKey}**: ${formattedValue}`
     );
   } else {
     console.warn(
       `⚠️ 'solution.md'에서 '${mdKey}'를 찾지 못해 PR 템플릿의 '${templateKey}' 항목이 비어있습니다.`
-    );
-    return templateContent;
-  }
-}
-
-function fillPrBodySection(
-  templateContent,
-  mdContent,
-  mdHeading,
-  templateHeading
-) {
-  const regex = new RegExp(
-    `### ${mdHeading}\\s*:?\\s*([\\s\\S]*?)(?=\\r?\\n###|\\Z)`
-  );
-  const match = mdContent.match(regex);
-
-  if (match && match[1] && match[1].trim() !== "") {
-    const value = match[1].trim();
-    return templateContent.replace(
-      templateHeading,
-      `${templateHeading}\n\n${value}`
-    );
-  } else {
-    console.warn(
-      `⚠️ 'solution.md'에서 '${mdHeading}' 섹션을 찾지 못해 PR 템플릿의 관련 항목이 비어있습니다.`
     );
     return templateContent;
   }
